@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup, NavigableString
 
 import article_parser
 
-def parse_html_for_proximity(html_path):
+def parse_html(html_path):
     """
     Parse HTML article, that is located at html_path, and replace each equation with 'MATHMARKER'.
 
@@ -257,7 +257,7 @@ def brute_force_algo():
     for article_id, article in articles.items():
         html_path = os.path.join(articles_dir, f"{article_id}.html")
 
-        text, equation_ids = parse_html_for_proximity(html_path)
+        text, equation_ids = parse_html(html_path)
         if text is None or equation_ids is None:
             continue
 
