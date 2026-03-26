@@ -69,7 +69,7 @@ def parse_html(html_path):
 
 def tokenize_with_sentence_ids(text):
     """
-    Tokenize text and assign each token a sentence id.
+    Tokenize text and assign each token a sentence number.
 
     Returns:
         tokens: list of tokens
