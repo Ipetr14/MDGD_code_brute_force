@@ -74,17 +74,6 @@ The generated JSON output contains two main sections:
 
 Adjacency lists are stored as a dictionary from equation ID to a list of derived neighbor equation IDs. If an equation has no outgoing edge, it is recorded as `[null]` in JSON.
 
-## Current Results
-
-The checked-in output file reports results on 69 articles:
-
-- Overall accuracy: `0.9025`
-- Overall precision: `0.4286`
-- Overall recall: `0.3781`
-- Overall F1 score: `0.4018`
-
-In the original initial commit message, these were summarized approximately as 88% accuracy, 43% precision, 40% recall, and 41% F1.
-
 ## Notes
 
 - The repository currently includes generated files such as `__pycache__/` and `.DS_Store` because they were present in the working folder when the repository was created.
