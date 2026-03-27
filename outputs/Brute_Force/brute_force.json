@@ -2,42 +2,42 @@
     "Correctness": {
         "Number of articles used": 69,
         "Overall Correctness": {
-            "Overall Accuracy": 0.9024987251402345,
-            "Overall Precision": 0.42857142857142855,
-            "Overall Recall": 0.37809187279151946,
-            "Overall F1 Score": 0.4017521902377972
+            "Overall Accuracy": 0.9030513317685478,
+            "Overall Precision": 0.4325767690253672,
+            "Overall Recall": 0.38162544169611307,
+            "Overall F1 Score": 0.40550688360450565
         },
         "Aggregate Correctness Statistics": {
             "Accuracy": {
-                "Mean": 0.8855571049716568,
+                "Mean": 0.8860290069828338,
                 "Lowest": 0.7,
-                "25th Quartile (Q1)": 0.8473282442748091,
+                "25th Quartile (Q1)": 0.8545454545454545,
                 "Median": 0.888268156424581,
                 "75th Quartile (Q3)": 0.9285714285714286,
                 "Highest": 1.0
             },
             "Precision": {
-                "Mean": 0.43709663590872366,
+                "Mean": 0.4405549186508938,
                 "Lowest": 0.0,
-                "25th Quartile (Q1)": 0.2727272727272727,
+                "25th Quartile (Q1)": 0.3,
                 "Median": 0.42857142857142855,
-                "75th Quartile (Q3)": 0.5882352941176471,
+                "75th Quartile (Q3)": 0.5833333333333334,
                 "Highest": 1.0
             },
             "Recall": {
-                "Mean": 0.4006077578915662,
+                "Mean": 0.40327903588893116,
                 "Lowest": 0.0,
                 "25th Quartile (Q1)": 0.25,
                 "Median": 0.3684210526315789,
-                "75th Quartile (Q3)": 0.5833333333333334,
+                "75th Quartile (Q3)": 0.5555555555555556,
                 "Highest": 1.0
             },
             "F1 Score": {
-                "Mean": 0.4166825409009597,
+                "Mean": 0.4196811808179825,
                 "Lowest": 0.0,
-                "25th Quartile (Q1)": 0.25,
+                "25th Quartile (Q1)": 0.2727272727272727,
                 "Median": 0.4,
-                "75th Quartile (Q3)": 0.5833333333333334,
+                "75th Quartile (Q3)": 0.5555555555555556,
                 "Highest": 1.0
             }
         }
@@ -234,7 +234,7 @@
                     null
                 ],
                 "S0.E5": [
-                    null
+                    "S0.E6"
                 ],
                 "S0.E6": [
                     null
@@ -249,10 +249,10 @@
                     null
                 ]
             },
-            "Accuracy": 0.9222222222222223,
-            "Precision": 0.6666666666666666,
-            "Recall": 0.6,
-            "F1 Score": 0.631578947368421
+            "Accuracy": 0.9,
+            "Precision": 0.5555555555555556,
+            "Recall": 0.5,
+            "F1 Score": 0.5263157894736842
         },
         "Article ID: 0907.3040": {
             "Adjacency List": {
@@ -1513,13 +1513,13 @@
                     null
                 ],
                 "S3.E3": [
-                    null
+                    "S3.E4"
                 ],
                 "S3.E4": [
                     "S3.E5"
                 ],
                 "S3.E5": [
-                    null
+                    "S3.E6"
                 ],
                 "S3.E6": [
                     null
@@ -1537,10 +1537,10 @@
                     null
                 ]
             },
-            "Accuracy": 0.839622641509434,
-            "Precision": 0.2,
-            "Recall": 0.18181818181818182,
-            "F1 Score": 0.1904761904761905
+            "Accuracy": 0.875,
+            "Precision": 0.4,
+            "Recall": 0.36363636363636365,
+            "F1 Score": 0.380952380952381
         },
         "Article ID: 1612.00217": {
             "Adjacency List": {
@@ -1959,7 +1959,7 @@
                     "S3.E8"
                 ],
                 "S3.E8": [
-                    null
+                    "S3.E9"
                 ],
                 "S3.E9": [
                     "S3.E10"
@@ -1989,10 +1989,10 @@
                     null
                 ]
             },
-            "Accuracy": 0.8933333333333333,
-            "Precision": 0.29411764705882354,
-            "Recall": 0.2,
-            "F1 Score": 0.2380952380952381
+            "Accuracy": 0.8996655518394648,
+            "Precision": 0.35294117647058826,
+            "Recall": 0.24,
+            "F1 Score": 0.28571428571428564
         },
         "Article ID: 1510.01138": {
             "Adjacency List": {
@@ -2191,7 +2191,7 @@
                     null
                 ],
                 "S3.E11": [
-                    null
+                    "S3.E12"
                 ],
                 "S3.E12": [
                     null
@@ -2206,7 +2206,7 @@
                     null
                 ]
             },
-            "Accuracy": 0.9409282700421941,
+            "Accuracy": 0.940677966101695,
             "Precision": 0.5333333333333333,
             "Recall": 0.5333333333333333,
             "F1 Score": 0.5333333333333333
@@ -2349,7 +2349,7 @@
                     null
                 ],
                 "S2.E2": [
-                    null
+                    "S2.E3"
                 ],
                 "S2.E3": [
                     null
@@ -2379,10 +2379,10 @@
                     null
                 ]
             },
-            "Accuracy": 0.8409090909090909,
-            "Precision": 0.2727272727272727,
-            "Recall": 0.1875,
-            "F1 Score": 0.2222222222222222
+            "Accuracy": 0.8549618320610687,
+            "Precision": 0.36363636363636365,
+            "Recall": 0.25,
+            "F1 Score": 0.2962962962962963
         },
         "Article ID: hep-lat9211009": {
             "Adjacency List": {
@@ -2696,7 +2696,7 @@
                     null
                 ],
                 "S2.E6": [
-                    null
+                    "S2.E7"
                 ],
                 "S2.E7": [
                     null
@@ -2720,7 +2720,7 @@
                     null
                 ]
             },
-            "Accuracy": 0.8681318681318682,
+            "Accuracy": 0.8674033149171271,
             "Precision": 0.15384615384615385,
             "Recall": 0.13333333333333333,
             "F1 Score": 0.14285714285714288

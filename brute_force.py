@@ -84,14 +84,41 @@ def tokenize_with_sentence_ids(text):
     pattern_sentence_end = r"[.!?]+"
 
     tokens = re.findall(pattern, text)
+
+    # Common scientific abbreviations that often appear before numbers/labels
+    # and should not trigger sentence boundaries (e.g., "Fig. 1", "Eq. (2)").
+    base_non_terminal_abbrev = {
+        "fig", "figs", "ref", "refs", "eq", "eqs",
+        "sec", "secs", "ch", "chap", "app", "apps",
+        "no", "nos", "def", "thm", "lem", "prop", "cor",
+        "ex", "obs", "resp", "cf", "al",
+    }
+    non_terminal_abbrev = set()
+    for abbrev in base_non_terminal_abbrev:
+        non_terminal_abbrev.update({abbrev, abbrev.capitalize(), abbrev.upper()})
+
+    def is_sentence_end_token(index):
+        token = tokens[index]
+        if not re.fullmatch(pattern_sentence_end, token):
+            return False
+
+        # Handle abbreviation + dot + label patterns in scientific text.
+        if token == ".":
+            prev_token = tokens[index - 1] if index > 0 else None
+
+            if prev_token in non_terminal_abbrev:
+                return False
+
+        return True
+
     cnt = 0
     sentence_nums = []
 
-    for token in tokens:
+    for idx, token in enumerate(tokens):
         sentence_nums.append(cnt)
 
         # increase id of current sentence if see the end of sentence
-        if re.fullmatch(pattern_sentence_end, token):
+        if is_sentence_end_token(idx):
             cnt += 1
     
     return tokens, sentence_nums
