@@ -4,6 +4,7 @@ Author: Petr Myagkov
 Modification Log:
     March 23, 2026: Created file wrote foundational function for html parsing (were mostly already implemented by Vishesh Prasad)
     March 24, 2026: Started implementing function for different rules that are required to draw edges
+    March 26, 2026: Implemented the basic version of the algo, F1 around 41%, added a couple features like uniting together equations that don't have any words between them and dealing with contractions
 '''
 
 import os
