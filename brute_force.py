@@ -219,7 +219,7 @@ def count_gap_words(tokens, left_pos, right_pos):
 
     return words_cnt
 
-def has_full_sentence_between(left_pos, right_pos, sentence_nums):
+def has_2_full_sentence_between(left_pos, right_pos, sentence_nums):
     """
     Check whether there is a full sentence between 2 tokens, located at left_pos and right_pos
 
@@ -229,7 +229,7 @@ def has_full_sentence_between(left_pos, right_pos, sentence_nums):
 
     # presence of at least 1 full sentence between 2 tokesn is equivalent to condition than the numbers of sentences
     # where the tokens are located, differs at least by 2
-    full_sentence_between = (sentence_nums[right_pos] - sentence_nums[left_pos] >= 2)
+    full_sentence_between = (sentence_nums[right_pos] - sentence_nums[left_pos] >= 3)
 
     return full_sentence_between
 
@@ -258,7 +258,7 @@ def build_local_adjacency(equations, tokens, sentence_nums, max_gap):
         right_id, right_idx, right_is_display = equations[ind + 1]
 
         gap_words = count_gap_words(tokens, left_idx, right_idx)
-        full_sentence_between = has_full_sentence_between(left_idx, right_idx, sentence_nums)
+        full_sentence_between = has_2_full_sentence_between(left_idx, right_idx, sentence_nums)
 
         # Consecutive equations with no real words between them are grouped into one system.
         if gap_words == 0:
@@ -307,7 +307,7 @@ def brute_force_algo():
         predicted_adjacency_lists: list of dictionaries, representing adjacency lists created by the brute force
     """
     articles_dir = "articles"
-    max_gap = 40
+    max_gap = 400
     articles = article_parser.get_manually_parsed_articles()
 
     article_ids = []
