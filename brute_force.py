@@ -15,14 +15,17 @@ import article_parser
 
 def parse_html(html_path):
     """
-    Parse HTML article, that is located at html_path, and replace each equation with 'MATHMARKER'.
+    Parse HTML article and replace displayed numbered equations and inline
+    references to numbered equations with `MATHMARKER`.
 
     Returns:
         text: plain text with equation markers
-        equation_ids: list of equation IDs in the same order as the markers
+        equation_ids: list of numbered display equation IDs
+        marker_equation_ids: equation IDs in the same order as the markers
+        marker_is_display: booleans indicating whether each marker is a display
     """
     if not os.path.exists(html_path):
-        return None, None
+        return None, None, None, None
 
     with open(html_path, "r", encoding="utf-8") as file:
         html_content = file.read()
@@ -34,30 +37,58 @@ def parse_html(html_path):
         cite.decompose()
 
     equation_ids = []
-    seen_ids = set()
+    marker_equation_ids = []
+    marker_is_display = []
+    seen_display_ids = set()
 
-    # Same general approach as before:
-    # find td[rowspan], then climb to a table/tbody container with an id.
-    equation_cells = soup.find_all("td", attrs={"rowspan": True})
+    # Replace equation references and display-math containers in document order.
+    # Numbered displays and refs to numbered displays get a marker.
+    # Unnumbered display expressions (e.g. S3.Ex7) are removed so their
+    # internal MathML text does not inflate the word gap between equations.
+    display_id_pattern = re.compile(r"^S\d+\.(E\d+|Ex\d+)$")
+    numbered_equation_pattern = re.compile(r"^S\d+\.E\d+$")
+    equation_ref_pattern = re.compile(r"^#(S\d+\.E\d+)$")
 
-    for cell in equation_cells:
-        container = cell.find_parent(["table", "tbody"])
+    for tag in soup.find_all(True):
+        if tag.name == "a":
+            href = tag.get("href", "")
+            ref_match = equation_ref_pattern.fullmatch(href)
+            if not ref_match:
+                continue
 
-        while container is not None and not container.get("id"):
-            container = container.find_parent(["table", "tbody"])
+            # References inside display equations are irrelevant because the
+            # whole display container is handled separately.
+            parent_display = tag.find_parent(
+                ["table", "tbody"],
+                id=display_id_pattern,
+            )
+            if parent_display is not None:
+                continue
 
-        if container is None:
+            marker_equation_ids.append(ref_match.group(1))
+            marker_is_display.append(False)
+            tag.replace_with(NavigableString(" MATHMARKER "))
             continue
 
-        equation_id = container.get("id")
-        if not equation_id or equation_id in seen_ids:
+        if tag.name not in {"table", "tbody"}:
             continue
 
-        seen_ids.add(equation_id)
-        equation_ids.append(equation_id)
+        container_id = tag.get("id")
+        if not container_id or not display_id_pattern.fullmatch(container_id):
+            continue
 
-        # Replace the whole equation block with one marker.
-        container.replace_with(NavigableString(" MATHMARKER "))
+        if container_id in seen_display_ids:
+            continue
+
+        seen_display_ids.add(container_id)
+
+        if numbered_equation_pattern.fullmatch(container_id):
+            equation_ids.append(container_id)
+            marker_equation_ids.append(container_id)
+            marker_is_display.append(True)
+            tag.replace_with(NavigableString(" MATHMARKER "))
+        else:
+            tag.replace_with(NavigableString(" "))
 
     text = soup.get_text(" ", strip=True)
     text = re.sub(r"\s+", " ", text).strip()
@@ -66,7 +97,7 @@ def parse_html(html_path):
     text = (text.rsplit("References", 1))[0]
     text = text.split("Acknowledgments")[0]
 
-    return text, equation_ids
+    return text, equation_ids, marker_equation_ids, marker_is_display
 
 def tokenize_with_sentence_ids(text):
     """
@@ -124,33 +155,32 @@ def tokenize_with_sentence_ids(text):
     
     return tokens, sentence_nums
 
-def get_equation_positions(tokens):
+def get_equation_positions(tokens, marker_equation_ids, marker_is_display):
     """
-    Get position of each equation in the array of tokens, as well as its position among all equations in the text
+    Get the token position of each equation occurrence in the text.
 
     Return:
-        equations_nums: array of tuples (eq_num, token_id), represents the number of equation among all equations, 
-        and among all tokens
+        equation_occurrences: array of tuples `(equation_id, token_id, is_display)`
     """
-    # position of token we currently looking at
     token_pos = 0
-
-    # position of equation we currently looking at
-    equation_pos = 1
-
-    equation_nums = []
+    marker_pos = 0
+    equation_occurrences = []
 
     for token in tokens:
-
-        # if we see equation marker, we add to our array its position among equations and tokens
         if token == "MATHMARKER":
-            equation_nums.append((equation_pos, token_pos))
-            equation_pos += 1
+            if marker_pos >= len(marker_equation_ids):
+                raise ValueError("More MATHMARKER tokens found than recorded equation markers.")
+            equation_occurrences.append(
+                (marker_equation_ids[marker_pos], token_pos, marker_is_display[marker_pos])
+            )
+            marker_pos += 1
 
-        # moving to the next token in the array "tokens"
         token_pos += 1
 
-    return equation_nums
+    if marker_pos != len(marker_equation_ids):
+        raise ValueError("Recorded equation markers do not match parsed MATHMARKER tokens.")
+
+    return equation_occurrences
 
 def is_word_token(token):
     """
@@ -161,7 +191,7 @@ def is_word_token(token):
     """
 
     # if token is our equation marker, it is not a word
-    if token == "MATHMAKER":
+    if token == "MATHMARKER":
         return False
 
     #pattern for word (counts sequences that consists from letters, numbers and hyphens)
@@ -224,39 +254,41 @@ def build_local_adjacency(equations, tokens, sentence_nums, max_gap):
     current_system = [equations[0][0]]
 
     for ind in range(len(equations) - 1):
-        left_num, left_idx = equations[ind]
-        right_num, right_idx = equations[ind + 1]
+        left_id, left_idx, left_is_display = equations[ind]
+        right_id, right_idx, right_is_display = equations[ind + 1]
 
         gap_words = count_gap_words(tokens, left_idx, right_idx)
         full_sentence_between = has_full_sentence_between(left_idx, right_idx, sentence_nums)
 
         # Consecutive equations with no real words between them are grouped into one system.
         if gap_words == 0:
-            current_system.append(right_num)
+            current_system.append(right_id)
         else:
-            if gap_words <= max_gap and not full_sentence_between:
-                for equation_num in current_system:
-                    adjacency.setdefault(equation_num, []).append(right_num)
-            current_system = [right_num]
+            if gap_words <= max_gap and not full_sentence_between and right_is_display:
+                for equation_id in current_system:
+                    if equation_id != right_id:
+                        adjacency.setdefault(equation_id, []).append(right_id)
+            current_system = [right_id]
 
     return adjacency
 
-def get_full_adj_list(old_adj_list, equation_nums):
+def get_full_adj_list(old_adj_list, equation_ids):
     """
-    Convert an internal adjacency list using equation numbers into an adjacency list using real equation IDs
+    Normalize an adjacency list keyed by equation IDs and ensure every displayed
+    numbered equation appears in the output.
 
     Return:
         full_adj_list: dictionary from str to list of strs, representing new desired adjacency list
     """
     full_adj_list = {}
-    num_equations = len(equation_nums)
-
-    for src_num, src_id in enumerate(equation_nums, start=1):
+    for src_id in equation_ids:
         dst_ids = []
+        seen_dst_ids = set()
 
-        for dst_num in old_adj_list.get(src_num, []):
-            if 1 <= dst_num and dst_num <= num_equations:
-                dst_ids.append(equation_nums[dst_num - 1])
+        for dst_id in old_adj_list.get(src_id, []):
+            if dst_id not in seen_dst_ids:
+                seen_dst_ids.add(dst_id)
+                dst_ids.append(dst_id)
 
         if dst_ids:
             full_adj_list[src_id] = dst_ids
@@ -285,17 +317,22 @@ def brute_force_algo():
     for article_id, article in articles.items():
         html_path = os.path.join(articles_dir, f"{article_id}.html")
 
-        text, equation_ids = parse_html(html_path)
-        if text is None or equation_ids is None:
+        text, equation_ids, marker_equation_ids, marker_is_display = parse_html(html_path)
+        if (
+            text is None
+            or equation_ids is None
+            or marker_equation_ids is None
+            or marker_is_display is None
+        ):
             continue
 
         tokens, sentence_nums = tokenize_with_sentence_ids(text)
-        equations = get_equation_positions(tokens)
+        equations = get_equation_positions(tokens, marker_equation_ids, marker_is_display)
 
-        if len(equations) != len(equation_ids):
+        if len(equations) != len(marker_equation_ids):
             print(
                 f"Skipping {article_id}: "
-                f"{len(equations)} markers found but {len(equation_ids)} equation IDs collected."
+                f"{len(equations)} markers found but {len(marker_equation_ids)} equation markers collected."
             )
             continue
 
