@@ -221,10 +221,10 @@ def count_gap_words(tokens, left_pos, right_pos):
 
 def has_2_full_sentence_between(left_pos, right_pos, sentence_nums):
     """
-    Check whether there is a full sentence between 2 tokens, located at left_pos and right_pos
+    Check whether there are 2 full sentences between 2 tokens, located at left_pos and right_pos
 
     Return:
-        full_sentence_between: boolean, True if full sentence present, False if not
+        full_sentence_between: boolean, True if 2 full sentences are present, False if not
     """
 
     # presence of at least 1 full sentence between 2 tokesn is equivalent to condition than the numbers of sentences
@@ -261,7 +261,7 @@ def build_local_adjacency(equations, tokens, sentence_nums, max_gap):
         full_sentence_between = has_2_full_sentence_between(left_idx, right_idx, sentence_nums)
 
         # Consecutive equations with no real words between them are grouped into one system.
-        if gap_words == 0:
+        if gap_words <= 2:
             current_system.append(right_id)
         else:
             if gap_words <= max_gap and not full_sentence_between and right_is_display:
