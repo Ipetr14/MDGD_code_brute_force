@@ -1,80 +1,79 @@
 # MDGD Brute-Force Derivation Graph
 
-This repository contains my brute-force implementation for the MDGD project. The goal is to infer a derivation graph between equations in STEM papers by parsing article HTML files, identifying equations in document order, and predicting which equations directly derive from earlier ones.
+This repository contains the current rule-based derivation-graph baseline for the MDGD project. It reads locally stored article HTML, extracts equation occurrences from the paper text, predicts directed edges between displayed equations, evaluates those predictions against `articles.json`, and writes the results to JSON.
 
-## Repository Purpose
+## What The Current Algorithm Does
 
-The code in this repo focuses on one specific baseline: a local, rule-based "bamboo/stick" brute-force algorithm. It works from article structure and nearby text.
+The implemented pipeline is the brute-force baseline in [`brute_force.py`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/brute_force.py). For each article it:
 
-Given an article, algorithm follows this list:
+1. Parses the HTML with BeautifulSoup.
+2. Removes citation tags.
+3. Replaces numbered displayed equations such as `S0.E3` with a `MATHMARKER`.
+4. Replaces inline references like links to `#S0.E3` with a `MATHMARKER` as well.
+5. Removes unnumbered display blocks so their MathML text does not artificially increase the gap between equations.
+6. Collapses the paper into plain text, then trims content after `References` or `Acknowledgments`.
+7. Tokenizes the text and assigns each token a sentence index, with special handling so abbreviations like `Fig.` or `Eq.` do not incorrectly end a sentence.
+8. Walks through equation-marker occurrences in document order and builds edges with local heuristics.
 
-1. Parses the HTML paper.
-2. Replaces displayed equations with a `MATHMARKER` token.
-3. Tracks the original equation IDs in article order.
-4. Tokenizes the surrounding text and sentence boundaries.
-5. Connects nearby consecutive equations when:
-   - they are close in the text,
-   - there is no full sentence between them,
-   - and the gap contains at most a fixed number of words.
-6. Evaluates the predicted adjacency list against manually labeled ground truth from `articles.json`.
+## Edge Construction Rules
 
-## Main Files
+The graph-building logic lives in `build_local_adjacency(...)` in [`brute_force.py`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/brute_force.py).
 
-- `brute_force.py`: core brute-force derivation graph algorithm.
-- `derivation_graph.py`: command-line entry point that runs the algorithm and evaluates predictions.
-- `article_parser.py`: utilities for loading the manually parsed dataset and extracting equations from article HTML.
-- `results_output.py`: writes evaluation results to JSON.
-- `articles.json`: labeled article metadata and ground-truth adjacency lists.
-- `articles/`: local HTML copies of the papers used in evaluation.
-- `outputs/Brute_Force/brute_force.json`: current saved output of the brute-force run.
+- Consecutive equation occurrences are processed in document order.
+- If two consecutive occurrences have at most 2 word tokens between them, they are grouped into the same local "system".
+- When the gap is larger than 2 words, the algorithm may connect the current system to the next occurrence only if:
+  - the gap is at most `max_gap = 400` words,
+  - there are not two full sentence boundaries between them,
+  - and the target occurrence is a displayed numbered equation.
+- If a connection is allowed, every equation currently in the local system gets an edge to that displayed equation.
+- Final output is normalized so every displayed numbered equation from the paper appears in the adjacency list. Equations with no outgoing edge are stored as `[null]` in JSON.
 
-## Algorithm Summary
+Inline equation references affect locality because they are kept as marker occurrences during parsing, but the final adjacency list is keyed only by displayed numbered equations.
 
-The brute-force method in `brute_force.py` uses a simple locality heuristic:
+## Repository Layout
 
-- Equations are read in document order.
-- Consecutive equations with no real words between them are treated as part of the same local system.
-- An edge is added only when the next equation is still locally connected to the current system.
-- The current implementation uses `max_gap = 40`, meaning two candidate equations can be linked only if there are at most 40 word tokens between them.
-
-This makes the method easy to interpret and fast to run, while still serving as a useful baseline for derivation graph prediction.
+- [`brute_force.py`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/brute_force.py): HTML parsing, tokenization, locality rules, and brute-force graph construction.
+- [`derivation_graph.py`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/derivation_graph.py): command-line entry point and evaluation logic.
+- [`article_parser.py`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/article_parser.py): loads the manually labeled article set from `articles.json`.
+- [`results_output.py`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/results_output.py): writes evaluation output JSON.
+- [`articles.json`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/articles.json): manually parsed articles and ground-truth adjacency lists.
+- [`articles/`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/articles): local HTML files used as input.
+- [`outputs/Brute_Force/brute_force.json`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/outputs/Brute_Force/brute_force.json): saved output from the brute-force run.
 
 ## Requirements
 
-Install the Python dependencies used directly by the code:
+Install the Python packages used by the current code:
 
 ```bash
 pip install beautifulsoup4 numpy pytz
 ```
 
-The project is currently run with `python3`.
+Run with `python3`.
 
 ## How To Run
-
-Run the brute-force derivation graph pipeline with:
 
 ```bash
 python3 derivation_graph.py -a brute
 ```
 
-This will:
+This run:
 
-- load the manually parsed articles from `articles.json`,
-- process the corresponding HTML files in `articles/`,
-- compute predicted adjacency lists using the brute-force algorithm,
-- evaluate the predictions against the labeled derivation graphs,
-- and write the results to `outputs/Brute_Force/brute_force.json`.
+- loads the labeled articles from `articles.json`,
+- parses matching HTML files from `articles/`,
+- predicts adjacency lists with the brute-force baseline,
+- evaluates the predictions against ground truth,
+- writes results to `outputs/Brute_Force/brute_force.json`.
 
-## Output Format
+## Output Structure
 
-The generated JSON output contains two main sections:
+The generated JSON has two top-level sections:
 
-- `Correctness`: overall metrics and aggregate per-article statistics.
-- `Results`: predicted adjacency list and per-article metrics for each article.
+- `Correctness`: overall and aggregate evaluation statistics.
+- `Results`: one entry per article with the predicted adjacency list and per-article metrics.
 
-Adjacency lists are stored as a dictionary from equation ID to a list of derived neighbor equation IDs. If an equation has no outgoing edge, it is recorded as `[null]` in JSON.
+Each adjacency list maps a displayed equation ID to a list of derived equation IDs. If no outgoing edges are predicted, the stored value is `[null]`.
 
 ## Notes
 
-- The repository currently includes generated files such as `__pycache__/` and `.DS_Store` because they were present in the working folder when the repository was created.
-- This repo is oriented around local experimentation and evaluation on the included article set.
+- The repository is currently centered on the brute-force baseline. Although [`derivation_graph.py`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/derivation_graph.py) still exposes older algorithm flags, the execution path in this repo calls `brute_force.brute_force_algo()`.
+- The article metadata in [`articles.json`](/Users/petrmyagkov/Documents/UIUC/MDGD/code_mdgd/articles.json) currently lists 107 manually parsed articles.
