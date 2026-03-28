@@ -15,14 +15,17 @@ import article_parser
 
 def parse_html(html_path):
     """
-    Parse HTML article and replace displayed numbered equations and inline
-    references to numbered equations with `MATHMARKER`.
+    Parse one HTML article and replace relevant math nodes with `MATHMARKER`.
+
+    Args:
+        html_path (str): filesystem path to the article HTML file to parse.
 
     Returns:
-        text: plain text with equation markers
-        equation_ids: list of numbered display equation IDs
-        marker_equation_ids: equation IDs in the same order as the markers
-        marker_is_display: booleans indicating whether each marker is a display
+        tuple[str | None, list[str] | None, list[str] | None, list[bool] | None]:
+            stores the cleaned article text, the numbered display equation IDs,
+            the equation IDs aligned with each inserted marker, and booleans
+            showing whether each marker came from a display equation. If the
+            file does not exist, all four return values are `None`.
     """
     if not os.path.exists(html_path):
         return None, None, None, None
@@ -101,11 +104,15 @@ def parse_html(html_path):
 
 def tokenize_with_sentence_ids(text):
     """
-    Tokenize text and assign each token a sentence number.
+    Tokenize article text and label each token with its sentence index.
+
+    Args:
+        text (str): normalized article text that may contain `MATHMARKER`
+            placeholders.
 
     Returns:
-        tokens: list of tokens
-        sentence_nums: sentence number for each token index
+        tuple[list[str], list[int]]: stores the token sequence and, for each
+            token position, the integer sentence ID where that token appears.
     """
 
     # pattern for one token, it can be our equation marker (MATHMAKER), sequence of letters, numbers and hyphens, 
@@ -159,8 +166,17 @@ def get_equation_positions(tokens, marker_equation_ids, marker_is_display):
     """
     Get the token position of each equation occurrence in the text.
 
-    Return:
-        equation_occurrences: array of tuples `(equation_id, token_id, is_display)`
+    Args:
+        tokens (list[str]): tokenized article text containing `MATHMARKER`
+            placeholders.
+        marker_equation_ids (list[str]): equation IDs in the order they were
+            replaced by markers during parsing.
+        marker_is_display (list[bool]): flags indicating whether each marker
+            corresponds to a display equation.
+
+    Returns:
+        list[tuple[str, int, bool]]: stores one tuple per equation occurrence
+            with the equation ID, token index, and display-equation flag.
     """
     token_pos = 0
     marker_pos = 0
@@ -184,10 +200,14 @@ def get_equation_positions(tokens, marker_equation_ids, marker_is_display):
 
 def is_word_token(token):
     """
-    Checks whether the token is a word (for the threshold that equation must be close to each other to have connection)
+    Check whether one token should count as a word in gap calculations.
 
-    Return:
-        is_word: boolean, true if token is a word, false if not
+    Args:
+        token (str): token from the article text or a `MATHMARKER` placeholder.
+
+    Returns:
+        bool: `True` when the token stores a word-like unit and `False`
+            otherwise.
     """
 
     # if token is our equation marker, it is not a word
@@ -203,10 +223,15 @@ def is_word_token(token):
 
 def count_gap_words(tokens, left_pos, right_pos):
     """
-    Counts amount of words in the subsegment [left_pos, right_pos] in the array of tokens
+    Count word-like tokens inside an inclusive token span.
 
-    Return:
-        words_cnt: int, representing the amount of words in the subsegment
+    Args:
+        tokens (list[str]): full token sequence for the article.
+        left_pos (int): starting token index of the span to inspect.
+        right_pos (int): ending token index of the span to inspect.
+
+    Returns:
+        int: number of tokens in the requested span that store words.
     """
 
     words_cnt = 0
@@ -221,10 +246,17 @@ def count_gap_words(tokens, left_pos, right_pos):
 
 def has_2_full_sentence_between(left_pos, right_pos, sentence_nums):
     """
-    Check whether there are 2 full sentences between 2 tokens, located at left_pos and right_pos
+    Check whether two token positions are separated by at least two full
+    intermediate sentences.
 
-    Return:
-        full_sentence_between: boolean, True if 2 full sentences are present, False if not
+    Args:
+        left_pos (int): token index of the left equation marker.
+        right_pos (int): token index of the right equation marker.
+        sentence_nums (list[int]): sentence ID stored for each token position.
+
+    Returns:
+        bool: `True` when the two token positions store a gap of at least two
+            full sentences, otherwise `False`.
     """
 
     # presence of at least 1 full sentence between 2 tokesn is equivalent to condition than the numbers of sentences
@@ -243,8 +275,17 @@ def build_local_adjacency(equations, tokens, sentence_nums, max_gap):
     - no full sentence in between
     - number of words in between is <= max_gap
 
-    Return:
-        adjacency: dictionary from int to list of ints, representing the desired adjacency list
+    Args:
+        equations (list[tuple[str, int, bool]]): equation occurrences in
+            document order with equation ID, token index, and display flag.
+        tokens (list[str]): tokenized article text.
+        sentence_nums (list[int]): sentence ID stored for each token position.
+        max_gap (int): maximum number of words allowed between linked
+            equations.
+
+    Returns:
+        dict[str, list[str]]: maps each source equation ID to the list of
+            destination equation IDs predicted as direct derivations.
     """
     adjacency = {}
 
@@ -277,8 +318,16 @@ def get_full_adj_list(old_adj_list, equation_ids):
     Normalize an adjacency list keyed by equation IDs and ensure every displayed
     numbered equation appears in the output.
 
-    Return:
-        full_adj_list: dictionary from str to list of strs, representing new desired adjacency list
+    Args:
+        old_adj_list (dict[str, list[str]]): partial adjacency list containing
+            only equations with predicted outgoing edges.
+        equation_ids (list[str]): displayed numbered equation IDs in document
+            order.
+
+    Returns:
+        dict[str, list[str | None]]: maps every displayed equation ID to its
+            unique destination IDs, or to `[None]` when no outgoing edge is
+            predicted.
     """
     full_adj_list = {}
     for src_id in equation_ids:
@@ -302,9 +351,11 @@ def brute_force_algo():
     Run the "bamboo/stick" brute force algorithm on all manually parsed articles.
 
     Returns:
-        article_ids: list of strs, representing all articles that were used for testing
-        true_adjacency_lists: list of dictionaries, representing adjacency lists from the dataset
-        predicted_adjacency_lists: list of dictionaries, representing adjacency lists created by the brute force
+        tuple[list[str], list[dict[str, list[str]]], list[dict[str, list[str | None]]]]:
+            stores the processed article IDs, the labeled adjacency lists from
+            the dataset, and the adjacency lists predicted by the brute-force
+            algorithm.
+
     """
     articles_dir = "articles"
     max_gap = 400
