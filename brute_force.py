@@ -244,10 +244,9 @@ def count_gap_words(tokens, left_pos, right_pos):
 
     return words_cnt
 
-def has_2_full_sentence_between(left_pos, right_pos, sentence_nums):
+def count_sentences_between(left_pos, right_pos, sentence_nums):
     """
-    Check whether two token positions are separated by at least two full
-    intermediate sentences.
+    Check how many senteces (to be precise, how many periods) there are between 2 tokens
 
     Args:
         left_pos (int): token index of the left equation marker.
@@ -255,17 +254,16 @@ def has_2_full_sentence_between(left_pos, right_pos, sentence_nums):
         sentence_nums (list[int]): sentence ID stored for each token position.
 
     Returns:
-        bool: `True` when the two token positions store a gap of at least two
-            full sentences, otherwise `False`.
+        int: indicates how many periods there are between 2 tokens
     """
 
     # presence of at least 1 full sentence between 2 tokesn is equivalent to condition than the numbers of sentences
     # where the tokens are located, differs at least by 2
-    full_sentence_between = (sentence_nums[right_pos] - sentence_nums[left_pos] >= 3)
+    full_sentences_between = (sentence_nums[right_pos] - sentence_nums[left_pos])
 
-    return full_sentence_between
+    return full_sentences_between
 
-def build_local_adjacency(equations, tokens, sentence_nums, max_gap):
+def build_local_adjacency(equations, tokens, sentence_nums, max_words_gap, max_sentences_gap):
     """
     Build an adjacency list using the set of rules:
 
@@ -280,7 +278,9 @@ def build_local_adjacency(equations, tokens, sentence_nums, max_gap):
             document order with equation ID, token index, and display flag.
         tokens (list[str]): tokenized article text.
         sentence_nums (list[int]): sentence ID stored for each token position.
-        max_gap (int): maximum number of words allowed between linked
+        max_words_gap (int): maximum number of words allowed between linked
+            equations.
+        max_sentences_gap (int): maximum number of sentences (periods) allowed between linked
             equations.
 
     Returns:
@@ -299,13 +299,13 @@ def build_local_adjacency(equations, tokens, sentence_nums, max_gap):
         right_id, right_idx, right_is_display = equations[ind + 1]
 
         gap_words = count_gap_words(tokens, left_idx, right_idx)
-        full_sentence_between = has_2_full_sentence_between(left_idx, right_idx, sentence_nums)
+        full_sentences_between = count_sentences_between(left_idx, right_idx, sentence_nums)
 
         # Consecutive equations with no real words between them are grouped into one system.
         if gap_words <= 2:
             current_system.append(right_id)
         else:
-            if gap_words <= max_gap and not full_sentence_between and right_is_display:
+            if gap_words <= max_words_gap and full_sentences_between <= max_sentences_gap and right_is_display:
                 for equation_id in current_system:
                     if equation_id != right_id:
                         adjacency.setdefault(equation_id, []).append(right_id)
@@ -358,7 +358,8 @@ def brute_force_algo():
 
     """
     articles_dir = "articles"
-    max_gap = 400
+    max_words_gap = 400
+    max_sentences_gap = 2;
     articles = article_parser.get_manually_parsed_articles()
 
     article_ids = []
@@ -391,7 +392,8 @@ def brute_force_algo():
             equations=equations,
             tokens=tokens,
             sentence_nums=sentence_nums,
-            max_gap=max_gap,
+            max_words_gap=max_words_gap,
+            max_sentences_gap=max_sentences_gap
         )
 
         predicted_adj = get_full_adj_list(local_adj, equation_ids)
