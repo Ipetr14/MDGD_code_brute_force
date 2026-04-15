@@ -36,6 +36,9 @@ TOKEN_SIMILARITY_STRICTNESS = 2
 # BAYES_TRAINING_PERCENTAGE - percentage of dataset to use for training of Naive Bayes model
 BAYES_TRAINING_PERCENTAGE = 85
 
+BRUTE_FORCE_MAX_WORD_GAP_LIMIT = 500
+BRUTE_FORCE_MAX_SENTENCE_GAP_LIMIT = 10
+
 '''HYPER-PARAMETERS'''
 
 
@@ -187,6 +190,167 @@ def evaluate_adjacency_lists(true_adjacency_lists, predicted_adjacency_lists):
     return accuracies, precisions, recalls, f1_scores, overall_accuracy, overall_precision, overall_recall, overall_f1_score, num_skipped
 
 
+def load_brute_force_tuning_data():
+    articles = article_parser.get_manually_parsed_articles()
+    tuning_data = []
+
+    for article_id, article in articles.items():
+        html_path = os.path.join("articles", f"{article_id}.html")
+
+        text, equation_ids, marker_equation_ids, marker_is_display = brute_force.parse_html(html_path)
+        if (
+            text is None
+            or equation_ids is None
+            or marker_equation_ids is None
+            or marker_is_display is None
+        ):
+            continue
+
+        tokens, sentence_nums = brute_force.tokenize_with_sentence_ids(text)
+        equations = brute_force.get_equation_positions(tokens, marker_equation_ids, marker_is_display)
+
+        if len(equations) != len(marker_equation_ids):
+            print(
+                f"Skipping {article_id}: "
+                f"{len(equations)} markers found but {len(marker_equation_ids)} equation markers collected."
+            )
+            continue
+
+        transitions = []
+        if equations:
+            current_system = [equations[0][0]]
+
+            for index in range(len(equations) - 1):
+                _, left_idx, _ = equations[index]
+                right_id, right_idx, right_is_display = equations[index + 1]
+
+                gap_words = brute_force.count_gap_words(tokens, left_idx, right_idx)
+                gap_sentences = brute_force.count_sentences_between(left_idx, right_idx, sentence_nums)
+
+                if gap_words <= 2:
+                    current_system.append(right_id)
+                else:
+                    transitions.append(
+                        {
+                            "sources": current_system.copy(),
+                            "target": right_id,
+                            "gap_words": gap_words,
+                            "gap_sentences": gap_sentences,
+                            "right_is_display": right_is_display,
+                        }
+                    )
+                    current_system = [right_id]
+
+        tuning_data.append(
+            {
+                "article_id": article_id,
+                "equation_ids": equation_ids,
+                "transitions": transitions,
+                "true_adjacency_list": article["Adjacency List"],
+            }
+        )
+
+    return tuning_data
+
+
+def get_brute_force_threshold_ranges(tuning_data):
+    word_gap_values = {0}
+    sentence_gap_values = {0}
+
+    for article_data in tuning_data:
+        for transition in article_data["transitions"]:
+            if not transition["right_is_display"]:
+                continue
+
+            if transition["gap_words"] <= BRUTE_FORCE_MAX_WORD_GAP_LIMIT:
+                word_gap_values.add(transition["gap_words"])
+            if transition["gap_sentences"] <= BRUTE_FORCE_MAX_SENTENCE_GAP_LIMIT:
+                sentence_gap_values.add(transition["gap_sentences"])
+
+    return sorted(word_gap_values), sorted(sentence_gap_values)
+
+
+def run_brute_force_with_cached_data(tuning_data, max_word_gap, max_sentence_gap):
+    article_ids = []
+    true_adjacency_lists = []
+    predicted_adjacency_lists = []
+
+    for article_data in tuning_data:
+        local_adj = {}
+
+        for transition in article_data["transitions"]:
+            if not transition["right_is_display"]:
+                continue
+            if transition["gap_words"] > max_word_gap:
+                continue
+            if transition["gap_sentences"] > max_sentence_gap:
+                continue
+
+            target_id = transition["target"]
+            for source_id in transition["sources"]:
+                if source_id != target_id:
+                    local_adj.setdefault(source_id, []).append(target_id)
+
+        predicted_adj = brute_force.get_full_adj_list(local_adj, article_data["equation_ids"])
+
+        article_ids.append(article_data["article_id"])
+        true_adjacency_lists.append(article_data["true_adjacency_list"])
+        predicted_adjacency_lists.append(predicted_adj)
+
+    return article_ids, true_adjacency_lists, predicted_adjacency_lists
+
+
+def tune_brute_force_vars():
+    tuning_data = load_brute_force_tuning_data()
+    word_gap_range, sentence_gap_range = get_brute_force_threshold_ranges(tuning_data)
+    best_result = None
+
+    for max_sentence_gap in sentence_gap_range:
+        for max_word_gap in word_gap_range:
+            article_ids, true_adjacency_lists, predicted_adjacency_lists = run_brute_force_with_cached_data(
+                tuning_data=tuning_data,
+                max_word_gap=max_word_gap,
+                max_sentence_gap=max_sentence_gap,
+            )
+
+            evaluation = evaluate_adjacency_lists(true_adjacency_lists, predicted_adjacency_lists)
+            overall_f1_score = evaluation[7]
+
+            current_result = (
+                overall_f1_score,
+                -max_word_gap,
+                -max_sentence_gap,
+                article_ids,
+                true_adjacency_lists,
+                predicted_adjacency_lists,
+                max_word_gap,
+                max_sentence_gap,
+            )
+
+            if best_result is None or current_result > best_result:
+                best_result = current_result
+
+    (
+        best_f1_score,
+        _,
+        _,
+        best_article_ids,
+        best_true_adjacency_lists,
+        best_predicted_adjacency_lists,
+        best_max_word_gap,
+        best_max_sentence_gap,
+    ) = best_result
+
+    print(
+        "Best brute-force thresholds: "
+        f"max_word_gap={best_max_word_gap}, "
+        f"max_sentence_gap={best_max_sentence_gap}, "
+        f"overall_f1_score={best_f1_score:.6f}"
+    )
+
+    return best_article_ids, best_true_adjacency_lists, best_predicted_adjacency_lists
+
+
 
 """
 run_derivation_algo(algorithm_option)
@@ -209,7 +373,10 @@ def run_derivation_algo(algorithm_option):
     articles_used = []
     train_article_ids = []
 
-    articles_used, true_adjacency_lists, predicted_adjacency_lists = brute_force.brute_force_algo()
+    if algorithm_option == 'brute':
+        articles_used, true_adjacency_lists, predicted_adjacency_lists = tune_brute_force_vars()
+    else:
+        articles_used, true_adjacency_lists, predicted_adjacency_lists = brute_force.brute_force_algo()
             
     
     # Get accuracy numbers

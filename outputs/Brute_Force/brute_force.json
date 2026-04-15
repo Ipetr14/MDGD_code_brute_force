@@ -2,41 +2,41 @@
     "Correctness": {
         "Number of articles used": 69,
         "Overall Correctness": {
-            "Overall Accuracy": 0.9227663319184181,
-            "Overall Precision": 0.5662805662805663,
-            "Overall Recall": 0.5182567726737338,
-            "Overall F1 Score": 0.5412054120541205
+            "Overall Accuracy": 0.9229733926907547,
+            "Overall Precision": 0.5675675675675675,
+            "Overall Recall": 0.519434628975265,
+            "Overall F1 Score": 0.5424354243542435
         },
         "Aggregate Correctness Statistics": {
             "Accuracy": {
-                "Mean": 0.9059825117999705,
+                "Mean": 0.9062125555082751,
                 "Lowest": 0.6666666666666666,
                 "25th Quartile (Q1)": 0.88,
-                "Median": 0.9140625,
+                "Median": 0.9153846153846154,
                 "75th Quartile (Q3)": 0.9505703422053232,
                 "Highest": 1.0
             },
             "Precision": {
-                "Mean": 0.5577017968147326,
+                "Mean": 0.5590193198713861,
                 "Lowest": 0.0,
                 "25th Quartile (Q1)": 0.4,
-                "Median": 0.5714285714285714,
+                "Median": 0.5789473684210527,
                 "75th Quartile (Q3)": 0.7,
                 "Highest": 1.0
             },
             "Recall": {
-                "Mean": 0.5282874068833909,
+                "Mean": 0.52949513635199,
                 "Lowest": 0.0,
                 "25th Quartile (Q1)": 0.35714285714285715,
-                "Median": 0.5,
+                "Median": 0.5217391304347826,
                 "75th Quartile (Q3)": 0.6666666666666666,
                 "Highest": 1.0
             },
             "F1 Score": {
-                "Mean": 0.538463927967759,
+                "Mean": 0.5397241674132537,
                 "Lowest": 0.0,
                 "25th Quartile (Q1)": 0.4000000000000001,
-                "Median": 0.5333333333333333,
+                "Median": 0.56,
                 "75th Quartile (Q3)": 0.6875,
                 "Highest": 1.0
             }
@@ -734,7 +734,7 @@
                     "S2.E4"
                 ],
                 "S2.E4": [
-                    "S2.E5"
+                    null
                 ],
                 "S2.E5": [
                     "S3.E7"
@@ -758,10 +758,10 @@
                     null
                 ]
             },
-            "Accuracy": 0.9126984126984127,
-            "Precision": 0.5454545454545454,
-            "Recall": 0.5,
-            "F1 Score": 0.5217391304347826
+            "Accuracy": 0.9285714285714286,
+            "Precision": 0.6363636363636364,
+            "Recall": 0.5833333333333334,
+            "F1 Score": 0.6086956521739131
         },
         "Article ID: 1701.01521": {
             "Adjacency List": {

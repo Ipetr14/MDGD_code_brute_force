@@ -347,10 +347,16 @@ def get_full_adj_list(old_adj_list, equation_ids):
 
     return full_adj_list
 
-def brute_force_algo():
+
+def brute_force_algo(max_words_gap, max_sentences_gap):
     """
     Run the "bamboo/stick" brute force algorithm on all manually parsed articles.
 
+    Args:
+        max_words_gap (int): maximum number of words allowed between linked
+            equations.
+        max_sentences_gap (int): maximum number of sentences allowed between
+            linked equations.
     Returns:
         tuple[list[str], list[dict[str, list[str]]], list[dict[str, list[str | None]]]]:
             stores the processed article IDs, the labeled adjacency lists from
@@ -359,8 +365,6 @@ def brute_force_algo():
 
     """
     articles_dir = "articles"
-    max_words_gap = 400
-    max_sentences_gap = 2;
     articles = article_parser.get_manually_parsed_articles()
 
     article_ids = []
@@ -394,7 +398,7 @@ def brute_force_algo():
             tokens=tokens,
             sentence_nums=sentence_nums,
             max_words_gap=max_words_gap,
-            max_sentences_gap=max_sentences_gap
+            max_sentences_gap=max_sentences_gap,
         )
 
         predicted_adj = get_full_adj_list(local_adj, equation_ids)
