@@ -264,13 +264,20 @@ def count_sentences_between(left_pos, right_pos, sentence_nums):
 
     return full_sentences_between
 
-def build_local_adjacency(equations, tokens, sentence_nums, max_words_gap, max_sentences_gap):
+def build_local_adjacency(
+    equations,
+    tokens,
+    sentence_nums,
+    max_system_words_gap,
+    max_words_gap,
+    max_sentences_gap,
+):
     """
     Build an adjacency list using the set of rules:
 
     Adding edge between 2 equations:
     - equations are consecutive in document order, unless several consecutive equations
-      have no real words between them and are treated as one local system
+      have a small enough word gap and are treated as one local system
     - no full sentence in between
     - number of words in between is <= max_gap
 
@@ -279,6 +286,8 @@ def build_local_adjacency(equations, tokens, sentence_nums, max_words_gap, max_s
             document order with equation ID, token index, and display flag.
         tokens (list[str]): tokenized article text.
         sentence_nums (list[int]): sentence ID stored for each token position.
+        max_system_words_gap (int): maximum number of words allowed between
+            consecutive equations for them to be merged into one local system.
         max_words_gap (int): maximum number of words allowed between linked
             equations.
         max_sentences_gap (int): maximum number of sentences (periods) allowed between linked
@@ -302,8 +311,8 @@ def build_local_adjacency(equations, tokens, sentence_nums, max_words_gap, max_s
         gap_words = count_gap_words(tokens, left_idx, right_idx)
         full_sentences_between = count_sentences_between(left_idx, right_idx, sentence_nums)
 
-        # Consecutive equations with no real words between them are grouped into one system.
-        if gap_words <= 2:
+        # Consecutive equations with a small enough word gap are grouped into one system.
+        if gap_words <= max_system_words_gap:
             current_system.append(right_id)
         else:
             if gap_words <= max_words_gap and full_sentences_between <= max_sentences_gap and right_is_display:
@@ -348,11 +357,13 @@ def get_full_adj_list(old_adj_list, equation_ids):
     return full_adj_list
 
 
-def brute_force_algo(max_words_gap, max_sentences_gap):
+def brute_force_algo(max_system_words_gap, max_words_gap, max_sentences_gap):
     """
     Run the "bamboo/stick" brute force algorithm on all manually parsed articles.
 
     Args:
+        max_system_words_gap (int): maximum number of words allowed between
+            consecutive equations for them to be merged into one local system.
         max_words_gap (int): maximum number of words allowed between linked
             equations.
         max_sentences_gap (int): maximum number of sentences allowed between
@@ -397,6 +408,7 @@ def brute_force_algo(max_words_gap, max_sentences_gap):
             equations=equations,
             tokens=tokens,
             sentence_nums=sentence_nums,
+            max_system_words_gap=max_system_words_gap,
             max_words_gap=max_words_gap,
             max_sentences_gap=max_sentences_gap,
         )
